@@ -37,6 +37,26 @@ except Exception as exc:  # pragma: no cover - surfaced by runtime probe
     _NSSCREEN_ERR = exc
     NSScreen = None
 
+try:
+    import AVFoundation as _AVFoundation
+    from AVFoundation import (
+        AVCaptureDevice,
+        AVCaptureDeviceDiscoverySession,
+        AVCaptureDevicePositionUnspecified,
+        AVMediaTypeVideo,
+    )
+
+    HAVE_CAMERA_PROBE = True
+    _CAMERA_PROBE_ERR = None
+except Exception as exc:  # pragma: no cover - surfaced by runtime probe
+    HAVE_CAMERA_PROBE = False
+    _CAMERA_PROBE_ERR = exc
+    _AVFoundation = None
+    AVCaptureDevice = None
+    AVCaptureDeviceDiscoverySession = None
+    AVCaptureDevicePositionUnspecified = 0
+    AVMediaTypeVideo = None
+
 
 _MEETING_APP_BUNDLE_IDS = {
     "com.apple.facetime",
@@ -145,6 +165,7 @@ _SIGNAL_WINDOW_WIDTH_RATIO = 0.18
 _SIGNAL_WINDOW_HEIGHT_RATIO = 0.10
 
 _AUTO_DND_PRIORITY_SCREEN_SHARE = 100
+_AUTO_DND_PRIORITY_CAMERA = 95
 _AUTO_DND_PRIORITY_SYSTEM_FOCUS = 90
 _AUTO_DND_PRIORITY_PRESENTATION = 80
 _AUTO_DND_PRIORITY_MEETING = 70
@@ -228,6 +249,85 @@ def _probe_focus_status() -> dict[str, object]:
         "authorization_status": authorization_status,
         "authorized": is_authorized,
         "is_focused": is_focused,
+    }
+
+
+_CAMERA_DEVICE_TYPE_NAMES = (
+    "AVCaptureDeviceTypeBuiltInWideAngleCamera",
+    "AVCaptureDeviceTypeExternal",
+    "AVCaptureDeviceTypeExternalUnknown",
+    "AVCaptureDeviceTypeContinuityCamera",
+    "AVCaptureDeviceTypeDeskViewCamera",
+)
+_camera_discovery_session = None
+_camera_discovery_session_failed = False
+
+
+def _camera_video_devices() -> list:
+    global _camera_discovery_session, _camera_discovery_session_failed
+
+    if not HAVE_CAMERA_PROBE:
+        return []
+
+    if _camera_discovery_session is None and not _camera_discovery_session_failed:
+        device_types = [
+            value
+            for name in _CAMERA_DEVICE_TYPE_NAMES
+            if (value := getattr(_AVFoundation, name, None)) is not None
+        ]
+        try:
+            _camera_discovery_session = (
+                AVCaptureDeviceDiscoverySession.discoverySessionWithDeviceTypes_mediaType_position_(
+                    device_types,
+                    AVMediaTypeVideo,
+                    AVCaptureDevicePositionUnspecified,
+                )
+            )
+        except Exception:
+            _camera_discovery_session_failed = True
+
+    if _camera_discovery_session is not None:
+        try:
+            return list(_camera_discovery_session.devices() or [])
+        except Exception:
+            pass
+
+    try:
+        return list(AVCaptureDevice.devicesWithMediaType_(AVMediaTypeVideo) or [])
+    except Exception:
+        return []
+
+
+def _probe_camera_status() -> dict[str, object]:
+    # 只读设备占用状态，不发起采集，因此不会触发摄像头 TCC 弹窗。
+    if not HAVE_CAMERA_PROBE:
+        return {
+            "available": False,
+            "active": False,
+            "device_count": 0,
+            "active_device_names": [],
+        }
+
+    devices = _camera_video_devices()
+    active_device_names: list[str] = []
+    for device in devices:
+        try:
+            in_use = bool(device.isInUseByAnotherApplication())
+        except Exception:
+            continue
+        if not in_use:
+            continue
+        try:
+            name = _normalize_text(device.localizedName())
+        except Exception:
+            name = ""
+        active_device_names.append(name or "摄像头")
+
+    return {
+        "available": True,
+        "active": bool(active_device_names),
+        "device_count": len(devices),
+        "active_device_names": active_device_names,
     }
 
 
@@ -502,6 +602,7 @@ def evaluate_auto_do_not_disturb(
     *,
     screen_bounds_list: list[dict[str, int]] | None = None,
     focus_status: dict[str, object] | None = None,
+    camera_status: dict[str, object] | None = None,
     now: float | None = None,
 ) -> AutoDoNotDisturbState:
     updated_at = now or time.time()
@@ -519,6 +620,25 @@ def evaluate_auto_do_not_disturb(
                 reason_key="system_focus",
                 reason_text="系统专注模式",
                 detail="系统 Focus 当前处于开启状态。",
+            )
+        )
+    normalized_camera_status = dict(camera_status or _probe_camera_status())
+    if bool(normalized_camera_status.get("active")):
+        device_names = [
+            _normalize_text(name)
+            for name in (normalized_camera_status.get("active_device_names") or [])
+            if _normalize_text(name)
+        ]
+        candidates.append(
+            _AutoDoNotDisturbCandidate(
+                priority=_AUTO_DND_PRIORITY_CAMERA,
+                reason_key="camera_active",
+                reason_text="摄像头使用中",
+                detail=(
+                    f"摄像头正在被其他应用使用: {', '.join(device_names)}"
+                    if device_names
+                    else "检测到摄像头正在被其他应用使用。"
+                ),
             )
         )
     candidates.extend(_collect_high_signal_window_candidates(windows, target_screens))
@@ -655,4 +775,5 @@ def probe_auto_do_not_disturb() -> AutoDoNotDisturbState:
     return evaluate_auto_do_not_disturb(
         snapshot,
         focus_status=_probe_focus_status(),
+        camera_status=_probe_camera_status(),
     )

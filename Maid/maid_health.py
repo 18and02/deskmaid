@@ -185,6 +185,48 @@ def _probe_window_bridge() -> HealthCheck:
     )
 
 
+def _probe_camera_probe_bridge() -> HealthCheck:
+    try:
+        from maid_auto_dnd import HAVE_CAMERA_PROBE, _CAMERA_PROBE_ERR, _probe_camera_status
+    except Exception as exc:
+        return _make_check(
+            "camera_probe",
+            "摄像头占用探针",
+            "error",
+            "自动免打扰模块加载失败",
+            detail=_clean_detail(str(exc)),
+            hint="检查 maid_auto_dnd 模块是否完整。",
+        )
+
+    if not HAVE_CAMERA_PROBE:
+        return _make_check(
+            "camera_probe",
+            "摄像头占用探针",
+            "error",
+            "AVFoundation 不可用",
+            detail=_clean_detail(str(_CAMERA_PROBE_ERR or "")),
+            hint="检查当前虚拟环境里的 pyobjc-framework-AVFoundation 是否完整。",
+        )
+
+    status = _probe_camera_status()
+    device_count = int(status.get("device_count") or 0)
+    if device_count <= 0:
+        return _make_check(
+            "camera_probe",
+            "摄像头占用探针",
+            "ok",
+            "探针可用，本机未发现摄像头",
+            detail="自动免打扰的摄像头占用信号已就绪；接上摄像头（含 Continuity Camera）后即生效。",
+        )
+    return _make_check(
+        "camera_probe",
+        "摄像头占用探针",
+        "ok",
+        f"探针可用，发现 {device_count} 个摄像头",
+        detail="占用检测只读设备状态、不采集画面，不会触发摄像头权限弹窗。",
+    )
+
+
 def _probe_osascript_runtime() -> HealthCheck:
     tools = [
         "list_calendar_events",
@@ -768,6 +810,7 @@ def collect_permission_health() -> HealthSnapshot:
     raw_checks = [
         _probe_appkit_bridge(),
         _probe_window_bridge(),
+        _probe_camera_probe_bridge(),
         _probe_osascript_runtime(),
         _probe_claude_code_cli(),
         _probe_bundle_runtime(),

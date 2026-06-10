@@ -385,6 +385,8 @@ def _pyinstaller_command() -> list[str]:
         "--hidden-import",
         "Intents",
         "--hidden-import",
+        "AVFoundation",
+        "--hidden-import",
         "Quartz",
         "--hidden-import",
         "qasync",
@@ -429,6 +431,8 @@ def _patch_info_plist(app_path: Path):
     info["CFBundleIdentifier"] = BUNDLE_ID
     info.pop("LSUIElement", None)
     info["NSAppleEventsUsageDescription"] = APPLE_EVENTS_USAGE
+    # 自动免打扰只读摄像头占用状态、不采集画面；声明该键以便枚举 Continuity Camera 设备。
+    info["NSCameraUseContinuityCameraDeviceType"] = True
 
     with plist_path.open("wb") as fh:
         plistlib.dump(info, fh, sort_keys=True)

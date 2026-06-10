@@ -3,6 +3,7 @@ pyobjc-core
 pyobjc-framework-Cocoa
 pyobjc-framework-Intents
 pyobjc-framework-Quartz
+pyobjc-framework-AVFoundation
 cryptography
 Pillow
 rembg

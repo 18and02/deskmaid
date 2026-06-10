@@ -3174,6 +3174,7 @@ def _build_privacy_boundary_view_en(
 _AUTO_DND_REASON_LABELS_ZH = {
     "system_focus": "系统专注模式",
     "screen_share": "共享/演示场景",
+    "camera_active": "摄像头使用中",
     "presentation_focus": "演示/录屏场景",
     "meeting_focus": "会议/通话场景",
     "frontmost_fullscreen": "前台全屏场景",
@@ -3182,6 +3183,7 @@ _AUTO_DND_REASON_LABELS_ZH = {
 _AUTO_DND_REASON_LABELS_EN = {
     "system_focus": "System Focus",
     "screen_share": "Sharing / Presenting",
+    "camera_active": "Camera In Use",
     "presentation_focus": "Presentation / Recording",
     "meeting_focus": "Meeting / Call",
     "frontmost_fullscreen": "Frontmost Fullscreen",
@@ -3212,7 +3214,7 @@ def _localized_auto_dnd_toggle_receipt(
                 [
                     "Receipt · Auto DND Detection",
                     "Status: Enabled",
-                    "Effect: Fullscreen, meeting, sharing, recording, and Focus scenes will keep being watched in the background.",
+                    "Effect: Fullscreen, meeting, sharing, recording, camera, and Focus scenes will keep being watched in the background.",
                     "Note: Manual Do Not Disturb still works as a separate switch.",
                 ]
             )
@@ -3220,7 +3222,7 @@ def _localized_auto_dnd_toggle_receipt(
             [
                 "Receipt · Auto DND Detection",
                 "Status: Disabled",
-                "Effect: Fullscreen, meeting, sharing, recording, and Focus scenes will stop muting reminders automatically.",
+                "Effect: Fullscreen, meeting, sharing, recording, camera, and Focus scenes will stop muting reminders automatically.",
                 "Note: Manual Do Not Disturb still works as a separate switch.",
             ]
         )
@@ -3229,7 +3231,7 @@ def _localized_auto_dnd_toggle_receipt(
             [
                 "状态回执 · 自动免打扰检测",
                 "状态: 已开启",
-                "影响: 全屏、会议、共享、录屏和系统 Focus 会继续在后台监测。",
+                "影响: 全屏、会议、共享、录屏、摄像头和系统 Focus 会继续在后台监测。",
                 "附记: 手动免打扰仍然可以单独开关。",
             ]
         )
@@ -3237,7 +3239,7 @@ def _localized_auto_dnd_toggle_receipt(
         [
             "状态回执 · 自动免打扰检测",
             "状态: 已关闭",
-            "影响: 全屏、会议、共享、录屏和系统 Focus 不会再自动静音提醒。",
+            "影响: 全屏、会议、共享、录屏、摄像头和系统 Focus 不会再自动静音提醒。",
             "附记: 手动免打扰仍然可以单独开关。",
         ]
     )
@@ -3685,9 +3687,9 @@ def _build_auto_dnd_status_view(
                     else "Background scene detection is paused."
                 ),
                 "detail": (
-                    "Fullscreen, meeting / call, share / recording, and System Focus scenes can automatically mute reminders."
+                    "Fullscreen, meeting / call, share / recording, camera, and System Focus scenes can automatically mute reminders."
                     if detection_enabled
-                    else "Fullscreen, meeting / call, share / recording, and System Focus scenes are not being monitored right now."
+                    else "Fullscreen, meeting / call, share / recording, camera, and System Focus scenes are not being monitored right now."
                 ),
                 "hint": (
                     "This is separate from Manual DND. Manual DND still works even when detection is off."
@@ -3705,7 +3707,7 @@ def _build_auto_dnd_status_view(
                     f"Current reason: {reason_label}."
                     if active
                     else (
-                        "No fullscreen / meeting / share / Focus scene is currently blocking normal reminders."
+                        "No fullscreen / meeting / share / camera / Focus scene is currently blocking normal reminders."
                         if detection_enabled
                         else "No automatic scene will mute reminders while detection is off."
                     )
@@ -3713,7 +3715,7 @@ def _build_auto_dnd_status_view(
                 "detail": (
                     detail_text
                     or (
-                        "Auto DND checks frontmost fullscreen windows, meeting / call windows, sharing / recording signals, and System Focus."
+                        "Auto DND checks frontmost fullscreen windows, meeting / call windows, sharing / recording signals, camera usage, and System Focus."
                         if detection_enabled
                         else "Turn detection back on from the context menu or Setup to resume background checks."
                     )
@@ -3795,9 +3797,9 @@ def _build_auto_dnd_status_view(
                     else "后台场景检测已经暂停。"
                 ),
                 "detail": (
-                    "全屏、会议/通话、共享/录屏和系统 Focus 场景都可以自动触发静音提醒。"
+                    "全屏、会议/通话、共享/录屏、摄像头和系统 Focus 场景都可以自动触发静音提醒。"
                     if detection_enabled
-                    else "全屏、会议/通话、共享/录屏和系统 Focus 场景当前都不会被后台监测。"
+                    else "全屏、会议/通话、共享/录屏、摄像头和系统 Focus 场景当前都不会被后台监测。"
                 ),
                 "hint": "这和手动免打扰是两回事；检测关了之后，手动免打扰依然能单独使用。",
             },
@@ -3813,7 +3815,7 @@ def _build_auto_dnd_status_view(
                     f"当前命中原因: {reason_label}。"
                     if active
                     else (
-                        "现在没有全屏、会议、共享、录屏或系统 Focus 场景在拦正常提醒。"
+                        "现在没有全屏、会议、共享、录屏、摄像头或系统 Focus 场景在拦正常提醒。"
                         if detection_enabled
                         else "检测关闭后，不会再有任何自动场景替你拦提醒。"
                     )
@@ -3821,7 +3823,7 @@ def _build_auto_dnd_status_view(
                 "detail": (
                     detail_text
                     or (
-                        "自动免打扰会检查前台全屏、会议/通话窗口、共享/录屏信号，以及系统 Focus。"
+                        "自动免打扰会检查前台全屏、会议/通话窗口、共享/录屏信号、摄像头占用，以及系统 Focus。"
                         if detection_enabled
                         else "想恢复这条链路，只要从右键菜单或设置里把自动免打扰检测重新打开。"
                     )
@@ -5307,9 +5309,9 @@ class AutoDoNotDisturbDialog(QDialog):
                 else "这里会说明自动免打扰现在为什么开着、为什么没开，或者检测本身是不是被暂停了。"
             )
             self._meta.setText(
-                "It watches fullscreen windows, meeting / share signals, recording cues, and System Focus."
+                "It watches fullscreen windows, meeting / share signals, recording cues, camera usage, and System Focus."
                 if english
-                else "它会看全屏窗口、会议/共享信号、录屏线索，以及系统 Focus。"
+                else "它会看全屏窗口、会议/共享信号、录屏线索、摄像头占用，以及系统 Focus。"
             )
 
     def show_for(self, target: QWidget, view: dict[str, object] | None = None):

@@ -17,6 +17,7 @@ from maid_health import collect_permission_health
 EXPECTED_KEYS = {
     "appkit_bridge",
     "window_bridge",
+    "camera_probe",
     "osascript_runtime",
     "claude_code_cli",
     "bundle_runtime",

@@ -288,6 +288,121 @@ def main():
         f"background meeting alone should not trigger auto DND: {background_meeting_only!r}",
     )
 
+    camera_active = evaluate_auto_do_not_disturb(
+        _snapshot(
+            app_name="TextEdit",
+            bundle_id="com.apple.TextEdit",
+            title="Notes",
+            width=960,
+            height=620,
+        ),
+        screen_bounds_list=SCREEN,
+        camera_status={
+            "available": True,
+            "active": True,
+            "device_count": 1,
+            "active_device_names": ["FaceTime HD Camera"],
+        },
+    )
+    _assert(camera_active.active, "expected camera in use to enable auto DND")
+    _assert(
+        camera_active.reason_key == "camera_active",
+        f"unexpected camera reason: {camera_active!r}",
+    )
+    _assert(
+        "FaceTime HD Camera" in camera_active.detail,
+        f"expected camera device name in detail: {camera_active!r}",
+    )
+
+    camera_beats_focus = evaluate_auto_do_not_disturb(
+        _snapshot(
+            app_name="TextEdit",
+            bundle_id="com.apple.TextEdit",
+            title="Notes",
+            width=960,
+            height=620,
+        ),
+        screen_bounds_list=SCREEN,
+        focus_status={
+            "available": True,
+            "authorization_status": "authorized",
+            "authorized": True,
+            "is_focused": True,
+        },
+        camera_status={
+            "available": True,
+            "active": True,
+            "device_count": 1,
+            "active_device_names": [],
+        },
+    )
+    _assert(camera_beats_focus.active, "expected active auto DND when camera + focus coexist")
+    _assert(
+        camera_beats_focus.reason_key == "camera_active",
+        f"expected camera to outrank focus: {camera_beats_focus!r}",
+    )
+
+    share_beats_camera = evaluate_auto_do_not_disturb(
+        _snapshot(
+            app_name="Google Chrome",
+            bundle_id="com.google.Chrome",
+            title="Weekly review - sharing screen",
+            width=960,
+            height=720,
+        ),
+        screen_bounds_list=SCREEN,
+        camera_status={
+            "available": True,
+            "active": True,
+            "device_count": 1,
+            "active_device_names": ["FaceTime HD Camera"],
+        },
+    )
+    _assert(share_beats_camera.active, "expected active auto DND when share + camera coexist")
+    _assert(
+        share_beats_camera.reason_key == "screen_share",
+        f"expected explicit share to outrank camera: {share_beats_camera!r}",
+    )
+
+    camera_idle = evaluate_auto_do_not_disturb(
+        _snapshot(
+            app_name="TextEdit",
+            bundle_id="com.apple.TextEdit",
+            title="Notes",
+            width=960,
+            height=620,
+        ),
+        screen_bounds_list=SCREEN,
+        camera_status={
+            "available": True,
+            "active": False,
+            "device_count": 1,
+            "active_device_names": [],
+        },
+    )
+    _assert(not camera_idle.active, f"idle camera should not trigger auto DND: {camera_idle!r}")
+
+    camera_unavailable = evaluate_auto_do_not_disturb(
+        _snapshot(
+            app_name="TextEdit",
+            bundle_id="com.apple.TextEdit",
+            title="Notes",
+            width=960,
+            height=620,
+        ),
+        screen_bounds_list=SCREEN,
+        camera_status={
+            "available": False,
+            "active": False,
+            "device_count": 0,
+            "active_device_names": [],
+        },
+    )
+    _assert(
+        not camera_unavailable.active,
+        f"unavailable camera probe should not trigger auto DND: {camera_unavailable!r}",
+    )
+
     normal = evaluate_auto_do_not_disturb(
         _snapshot(
             app_name="TextEdit",
@@ -297,6 +412,12 @@ def main():
             height=620,
         ),
         screen_bounds_list=SCREEN,
+        camera_status={
+            "available": True,
+            "active": False,
+            "device_count": 0,
+            "active_device_names": [],
+        },
     )
     _assert(not normal.active, f"unexpected auto DND for normal window: {normal!r}")
 
