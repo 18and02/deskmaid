@@ -1,0 +1,43 @@
+{
+  "id": "petdex-maid-codex",
+  "name": "Petdex maid(codex)",
+  "version": 1,
+  "author": "hatch-pet",
+  "description": "Codex-compatible animated maid pet pack reverse-prompted from DeskMaid references and adapted for DeskMaid sprite switching. The DeskMaid runtime maps generated action rows to the closest semantic expression states.",
+  "tags": ["petdex", "maid", "codex", "animated"],
+  "default_pose": "idle",
+  "preview_pose": "alert",
+  "display_scale": 2.5,
+  "canvas_width": 192,
+  "canvas_height": 208,
+  "default_anchor": {
+    "x": 0.5,
+    "y": 0.92
+  },
+  "poses": {
+    "idle": "frames/idle",
+    "blink": "frames/idle",
+    "alert": "frames/review",
+    "excited": "frames/waving",
+    "enter": "frames/running-right",
+    "exit": "frames/running-left",
+    "sleepy": "frames/waiting",
+    "peckish": "frames/waiting",
+    "outing": "frames/running-left",
+    "held": "frames/waving"
+  },
+  "animations": {
+    "walk": {
+      "fps": 8,
+      "frames": [
+        "frames/running-right"
+      ]
+    },
+    "work": {
+      "fps": 8,
+      "frames": [
+        "frames/running"
+      ]
+    }
+  }
+}

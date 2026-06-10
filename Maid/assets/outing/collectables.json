@@ -1,0 +1,114 @@
+[
+  {
+    "id": "paper_star",
+    "name": "皱掉的纸星星",
+    "rarity": "common",
+    "description": "边角已经压平了，看起来像是谁心血来潮折到一半又后悔。",
+    "weight": 1.0
+  },
+  {
+    "id": "sticky_note_corner",
+    "name": "便签纸角",
+    "rarity": "common",
+    "description": "只剩一个角，写着半个感叹号，像你那些没写完的提醒。",
+    "weight": 1.0
+  },
+  {
+    "id": "rubber_band",
+    "name": "疲惫橡皮筋",
+    "rarity": "common",
+    "description": "弹性还在，但精神状态看起来和你下午三点差不多。",
+    "weight": 0.95
+  },
+  {
+    "id": "receipt_slip",
+    "name": "发白的小票",
+    "rarity": "common",
+    "description": "墨迹快没了，只剩下消费过的事实仍然刺眼。",
+    "weight": 0.85
+  },
+  {
+    "id": "copper_keycap",
+    "name": "旧铜色键帽",
+    "rarity": "uncommon",
+    "description": "磨损得很均匀，像从某台熬过很多夜的键盘上退下来的。",
+    "weight": 0.9
+  },
+  {
+    "id": "glass_button",
+    "name": "玻璃纽扣",
+    "rarity": "uncommon",
+    "description": "在光下会亮一下，没什么用，但丢掉又可惜。",
+    "weight": 0.8
+  },
+  {
+    "id": "clean_usb_cap",
+    "name": "干净的 USB 盖",
+    "rarity": "uncommon",
+    "description": "能独自幸存到现在已经很不容易，比多数线缆配件争气。",
+    "weight": 0.8
+  },
+  {
+    "id": "blue_index_tab",
+    "name": "蓝色索引贴",
+    "rarity": "uncommon",
+    "description": "粘性还不错，适合贴在你迟迟不肯面对的那一页上。",
+    "weight": 0.75
+  },
+  {
+    "id": "silver_clip",
+    "name": "银色燕尾夹",
+    "rarity": "rare",
+    "description": "夹口很紧，看起来比某些项目计划更靠谱。",
+    "weight": 0.7
+  },
+  {
+    "id": "focus_token",
+    "name": "专注代币",
+    "rarity": "rare",
+    "description": "小小一枚，摸起来凉。请不要把它花在无意义刷新上。",
+    "weight": 0.65
+  },
+  {
+    "id": "tiny_level",
+    "name": "迷你水平仪",
+    "rarity": "rare",
+    "description": "气泡居中时让人很安心，可惜不能校准你的作息。",
+    "weight": 0.55
+  },
+  {
+    "id": "brass_bookmark",
+    "name": "黄铜书签",
+    "rarity": "rare",
+    "description": "薄得锋利，像一句被删掉但仍然很有攻击性的评语。",
+    "weight": 0.55
+  },
+  {
+    "id": "night_pin",
+    "name": "夜色别针",
+    "rarity": "epic",
+    "description": "黑得发亮，像是专门替熬夜的人准备的战利品。",
+    "weight": 0.5
+  },
+  {
+    "id": "quiet_badge",
+    "name": "静音徽章",
+    "rarity": "epic",
+    "description": "边缘有细小划痕，戴上以后仿佛可以少接三条没营养的消息。",
+    "weight": 0.42
+  },
+  {
+    "id": "red_thread_spool",
+    "name": "红线小线轴",
+    "rarity": "epic",
+    "description": "线头绕得很整齐，专门用来把快散架的计划象征性缝一下。",
+    "weight": 0.38
+  },
+  {
+    "id": "clear_minute_glass",
+    "name": "透明分钟沙漏",
+    "rarity": "epic",
+    "description": "只有一分钟，刚好够你站起来、喝水，并假装这是自律。",
+    "weight": 0.34
+  }
+]

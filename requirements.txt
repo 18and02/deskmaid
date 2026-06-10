@@ -1,0 +1,14 @@
+PySide6
+pyobjc-core
+pyobjc-framework-Cocoa
+pyobjc-framework-Intents
+pyobjc-framework-Quartz
+cryptography
+Pillow
+rembg
+onnxruntime
+claude-agent-sdk
+anthropic
+qasync
+python-dotenv
+pyinstaller

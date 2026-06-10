@@ -1,0 +1,27 @@
+{
+  "id": "maid",
+  "name": "Classic Maid",
+  "version": 1,
+  "author": "Deskmaid",
+  "description": "经典单立绘包，主要用于低配占位或快速替换测试。",
+  "tags": ["classic", "minimal"],
+  "default_pose": "idle",
+  "preview_pose": "idle",
+  "canvas_width": 480,
+  "canvas_height": 480,
+  "default_anchor": {
+    "x": 0.5,
+    "y": 0.92
+  },
+  "poses": {
+    "idle": [
+      "../../maid.png"
+    ]
+  },
+  "animations": {
+    "walk": {
+      "fps": 3,
+      "frames": []
+    }
+  }
+}

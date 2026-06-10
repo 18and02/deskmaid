@@ -1,0 +1,132 @@
+[
+  {
+    "id": "sun_patch",
+    "text": "楼下那片太阳刚刚好。你要是肯下去晒十分钟，至少能少一点阴气。",
+    "weight": 1.0
+  },
+  {
+    "id": "water_bottle",
+    "text": "我路过你的水杯时看了一眼。它还在半满以上，这次先不骂你。",
+    "weight": 1.0
+  },
+  {
+    "id": "stubborn_tabs",
+    "text": "你浏览器里那几排标签页还活着。它们看上去比项目更先进入长期维护期。",
+    "weight": 0.9
+  },
+  {
+    "id": "sleepy_corridor",
+    "text": "走廊挺安静的。你也该像个活人一样站起来走两步。",
+    "weight": 1.0
+  },
+  {
+    "id": "download_folder",
+    "text": "下载文件夹门口又堆了一层新东西。你这整理习惯，连我都替它们绝望。",
+    "weight": 0.8
+  },
+  {
+    "id": "meeting_escape",
+    "text": "刚刚那种场合我还是识趣点比较好。你负责体面，我负责消失。",
+    "weight": 0.7
+  },
+  {
+    "id": "keyboard_crumbs",
+    "text": "键盘缝里有些可疑碎屑。我没有细看，给彼此留一点体面。",
+    "weight": 0.9
+  },
+  {
+    "id": "chair_warning",
+    "text": "你的椅子发出了抗议信号。再不站起来，它可能会申请工伤。",
+    "weight": 1.0
+  },
+  {
+    "id": "charging_cable",
+    "text": "我帮你看了眼充电线。它绕成那个样子，像你早上没理清的脑子。",
+    "weight": 0.8
+  },
+  {
+    "id": "coffee_boundary",
+    "text": "咖啡味还挺重。喝水不是背叛咖啡因，是给身体续命。",
+    "weight": 1.0
+  },
+  {
+    "id": "desktop_pile",
+    "text": "桌面文件又堆起来了。你管这叫临时，我看它们已经准备在这里养老。",
+    "weight": 0.8
+  },
+  {
+    "id": "quiet_window",
+    "text": "窗边风不错。你可以看十秒远处，让眼睛短暂摆脱像素牢房。",
+    "weight": 1.0
+  },
+  {
+    "id": "notification_drift",
+    "text": "我路过通知中心，里面热闹得像没人负责的群聊。建议你先别点开。",
+    "weight": 0.75
+  },
+  {
+    "id": "calendar_sigh",
+    "text": "日历上事情不少。好消息是你还活着，坏消息是它们也还活着。",
+    "weight": 0.75
+  },
+  {
+    "id": "mailbox_pressure",
+    "text": "邮箱看起来有点压强。暂时别打开，先喝口水，免得被未读数创到。",
+    "weight": 0.7
+  },
+  {
+    "id": "focus_dust",
+    "text": "我在外面捡到一点专注力。量不多，省着用，别又拿去刷页面。",
+    "weight": 0.9
+  },
+  {
+    "id": "cable_management",
+    "text": "线缆管理依然是一门你没选修的课。算了，今天先不补考。",
+    "weight": 0.75
+  },
+  {
+    "id": "standing_gap",
+    "text": "刚才有一段非常适合站起来活动的空档。你完美错过，稳定得可怕。",
+    "weight": 0.9
+  },
+  {
+    "id": "draft_smell",
+    "text": "有个草稿看起来快被你放成化石。要么写完，要么删掉，别互相折磨。",
+    "weight": 0.7
+  },
+  {
+    "id": "budget_whisper",
+    "text": "预算那边还算稳。暂时不用省到连脑子都舍不得转。",
+    "weight": 0.65
+  },
+  {
+    "id": "screen_heat",
+    "text": "屏幕热得很敬业。你也可以敬业地眨眨眼，别让它独自努力。",
+    "weight": 0.9
+  },
+  {
+    "id": "task_list_glare",
+    "text": "待办列表正在盯你。它没说话，但我替它翻了个白眼。",
+    "weight": 0.8
+  },
+  {
+    "id": "water_detour",
+    "text": "我绕去水杯那边看了看。它存在感很强，你装没看见的技术更强。",
+    "weight": 1.0
+  },
+  {
+    "id": "posture_receipt",
+    "text": "你的坐姿刚才短暂变成人类标准，随后又恢复了自由发挥。",
+    "weight": 0.95
+  },
+  {
+    "id": "folder_archaeology",
+    "text": "我发现一个叫最终版的文件夹。里面还有最终版2。你们人类真会命名灾难。",
+    "weight": 0.75
+  },
+  {
+    "id": "break_room_report",
+    "text": "休息区没有什么新鲜事。真正需要休息的那位还钉在屏幕前。",
+    "weight": 0.9
+  }
+]

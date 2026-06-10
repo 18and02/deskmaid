@@ -1,0 +1,29 @@
+# 密钥与运行时隐私数据 —— 绝不提交
+.env
+.maid_memory.json
+.maid_memory.json.key
+.maid_app_state.json
+.maid_budget.json
+.maid_outing.json
+.maid_session.json
+
+# 本地工具配置(含私有 endpoint)
+.codex/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.venv-py39/
+
+# 构建产物(build 869M / dist 3G)
+build/
+dist/
+
+# 临时文件与外部参考资料
+tmp/
+.tmp_ui_preview/
+refer/
+
+# 系统文件
+.DS_Store

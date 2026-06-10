@@ -1,0 +1,54 @@
+{
+  "id": "gemini",
+  "name": "Gemini Maid",
+  "version": 1,
+  "author": "Deskmaid",
+  "description": "默认女仆立绘包，覆盖对话、进入、退出、困倦、饥饿和出门等完整状态。",
+  "tags": ["default", "full", "gemini"],
+  "default_pose": "idle",
+  "preview_pose": "alert",
+  "canvas_width": 480,
+  "canvas_height": 480,
+  "default_anchor": {
+    "x": 0.5,
+    "y": 0.92
+  },
+  "poses": {
+    "idle": [
+      "../../maid_idle.png"
+    ],
+    "blink": [
+      "../../maid_idle_blink.png"
+    ],
+    "alert": [
+      "../../maid_reply_sarcastic.png"
+    ],
+    "excited": [
+      "../../maid.png"
+    ],
+    "enter": [
+      "../../maid_enter.png"
+    ],
+    "exit": [
+      "../../maid_exit.png"
+    ],
+    "sleepy": [
+      "../../maid_yawn.png"
+    ],
+    "peckish": [
+      "../../maid_peckish.png"
+    ],
+    "outing": [
+      "../../maid_exit.png"
+    ],
+    "held": [
+      "../../maid.png"
+    ]
+  },
+  "animations": {
+    "walk": {
+      "fps": 3,
+      "frames": []
+    }
+  }
+}
