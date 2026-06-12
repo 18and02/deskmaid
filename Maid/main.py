@@ -161,7 +161,23 @@ from maid_chat import (
     shutdown_maid_session,
     update_long_term_memory_item,
 )
-from lines import ACTIVITY_REMINDER_LINES, WATER_REMINDER_LINES
+from lines import (
+    ACTIVITY_REMINDER_LINES,
+    HUNGER_FULL_LINES,
+    HUNGER_HUNGRY_LINES,
+    HUNGER_PECKISH_LINES,
+    HUNGER_STARVING_LINES,
+    WATER_REMINDER_LINES,
+)
+from maid_hunger import (
+    HUNGER_STAGE_HUNGRY,
+    HUNGER_STAGE_NORMAL,
+    HUNGER_STAGE_PECKISH,
+    HUNGER_STAGE_STARVING,
+    HungerAnnouncer,
+    HungerState,
+    evaluate_hunger,
+)
 
 # --- macOS native window tweaks via PyObjC ---
 try:
@@ -7506,6 +7522,7 @@ class MaidWidget(QWidget):
         self._auto_dnd_refresh_queued = False
         self._deferred_alert_line: str | None = None
         self._deferred_alert_style = "plain"
+        self._next_deferred_flush_at = 0.0
         self._outing_store = OutingStateStore()
         self._outing_catalog = load_outing_catalog(ASSETS)
         self._chat_dialog = ChatInputDialog()
@@ -7579,6 +7596,7 @@ class MaidWidget(QWidget):
         self._state_entered_at = self._t0
         # emote: independent of main state, time-bound flash
         self._emote_until = None
+        self._emote_key = "excited"
         # transitional overlays (time-bound, fire-and-forget)
         self._enter_until = (self._t0 + ENTER_DURATION_S) if "enter" in self._sprites else None
         self._exiting = False
@@ -7598,6 +7616,27 @@ class MaidWidget(QWidget):
         self._peckish_repeat_s = DEMO_PECKISH_REPEAT_S if demo_short else PECKISH_REPEAT_S
         self._next_sleepy_at = self._t0 + self._sleepy_after_s
         self._next_peckish_at = self._t0 + self._peckish_after_s
+        # hunger (budget-driven): initial stage comes from the current snapshot,
+        # so a restart never re-announces an old threshold crossing.
+        try:
+            self._hunger_state = evaluate_hunger(get_budget_guard_snapshot())
+        except Exception as exc:
+            print(f"[hunger] initial snapshot failed: {exc}")
+            self._hunger_state = HungerState()
+        self._hunger_announcer = HungerAnnouncer(
+            {
+                HUNGER_STAGE_PECKISH: HUNGER_PECKISH_LINES,
+                HUNGER_STAGE_HUNGRY: HUNGER_HUNGRY_LINES,
+                HUNGER_STAGE_STARVING: HUNGER_STARVING_LINES,
+            },
+            HUNGER_FULL_LINES,
+            initial_stage=self._hunger_state.stage,
+        )
+        if self._hunger_state.stage != HUNGER_STAGE_NORMAL:
+            print(
+                f"[hunger] startup stage={self._hunger_state.stage} "
+                f"ratio={self._hunger_state.ratio} scope={self._hunger_state.scope or 'n/a'}"
+            )
         self._last_state_key = self._current_state_key()
         self._select_sprite_variant(self._last_state_key)
 
@@ -7645,11 +7684,13 @@ class MaidWidget(QWidget):
               f"states=[{states}]")
 
     # ---------- state -> sprite resolution ----------
-    # Priority: EXIT > ENTER > ALERT > HELD > emote > outing > peckish > sleepy > blink > idle.
+    # Priority: EXIT > ENTER > ALERT > HELD > emote > outing > starving > hungry
+    # > peckish > sleepy > blink > idle.
     # EXIT and ENTER are transitional overlays; ALERT is the main "talking"
-    # state; HELD is direct pointer drag feedback; emote (excited) is a brief reaction; outing is a local autonomous
-    # state; peckish/sleepy are short ambient inserts; blink interrupts only
-    # the default idle.
+    # state; HELD is direct pointer drag feedback; emote (excited/full) is a
+    # brief reaction; outing is a local autonomous state; starving/hungry are
+    # budget-driven persistent idle replacements; peckish/sleepy are short
+    # ambient inserts; blink interrupts only the default idle.
     def _current_state_key(self) -> str:
         if self._exiting and "exit" in self._sprites:
             return "exit"
@@ -7662,10 +7703,22 @@ class MaidWidget(QWidget):
         if self._dragging and "held" in self._sprites:
             return "held"
         if (self._emote_until is not None and now < self._emote_until
-                and "excited" in self._sprites):
-            return "excited"
+                and self._emote_key in self._sprites):
+            return self._emote_key
         if self._outing_active and "outing" in self._sprites:
             return "outing"
+        # hunger stages (budget-driven) replace idle while they hold;
+        # packs without the dedicated forms degrade to peckish.
+        if self._hunger_state.stage == HUNGER_STAGE_STARVING:
+            if "starving" in self._sprites:
+                return "starving"
+            if "peckish" in self._sprites:
+                return "peckish"
+        if self._hunger_state.stage == HUNGER_STAGE_HUNGRY:
+            if "hungry" in self._sprites:
+                return "hungry"
+            if "peckish" in self._sprites:
+                return "peckish"
         # IDLE mood substates
         if self._mood == "peckish" and "peckish" in self._sprites:
             return "peckish"
@@ -7681,6 +7734,7 @@ class MaidWidget(QWidget):
             return
         if self._state == MaidState.ALERT or self._exiting:
             return  # those states win anyway; emote would be invisible
+        self._emote_key = key
         self._emote_until = time.monotonic() + duration_s
         print(f"[emote] {key} for {duration_s}s")
 
@@ -7835,11 +7889,42 @@ class MaidWidget(QWidget):
     def _poll_budget_reset_notice(self):
         if self._budget_status_dialog.isVisible():
             self._refresh_budget_status_dialog()
+
+        previous_stage = self._hunger_state.stage
+        try:
+            self._hunger_state = evaluate_hunger(get_budget_guard_snapshot())
+        except Exception as exc:
+            print(f"[hunger] snapshot failed: {exc}")
+        if self._hunger_state.stage != previous_stage:
+            print(
+                f"[hunger] stage {previous_stage} -> {self._hunger_state.stage} "
+                f"ratio={self._hunger_state.ratio} scope={self._hunger_state.scope or 'n/a'}"
+            )
+        announcement = self._hunger_announcer.observe(self._hunger_state)
+
         message = consume_budget_reset_notice().strip()
-        if not message:
+        if message:
+            print(f"[budget] reset notice: {message!r}")
+            if announcement is not None and announcement.kind == "full":
+                # 回血报喜和正式回执合并成一条气泡，免得两条提醒抢同一个嘴。
+                self._play_hunger_full_emote()
+                self.show_alert(f"{announcement.line}\n\n{message}", force=False)
+            else:
+                self.show_alert(message, force=False)
             return
-        print(f"[budget] reset notice: {message!r}")
-        self.show_alert(message, force=False)
+
+        if announcement is None:
+            return
+        print(f"[hunger] announce {announcement.kind}/{announcement.stage}: {announcement.line!r}")
+        if announcement.kind == "full":
+            self._play_hunger_full_emote()
+        self.show_alert(announcement.line, force=False)
+
+    def _play_hunger_full_emote(self):
+        if "full" in self._sprites:
+            self.play_emote("full", duration_s=EMOTE_DURATION_S * 2)
+        else:
+            self.play_emote("excited")
 
     def _on_system_will_sleep(self):
         note_budget_suspend()
@@ -8733,12 +8818,24 @@ class MaidWidget(QWidget):
     def _flush_deferred_alert(self):
         if self._effective_do_not_disturb() or self._is_busy_for_deferred_alerts():
             return
+        if self._state == MaidState.ALERT:
+            return
         line = (self._deferred_alert_line or "").strip()
         if not line:
             return
         style = self._deferred_alert_style
         self._clear_deferred_alert()
         self.show_alert(line, force=False, style=style)
+
+    def _maybe_flush_deferred_alert(self, now: float):
+        # 兜底补发：忙碌/免打扰解除后即使再没有别的气泡，排队的提醒也能在
+        # 几秒内自己浮出来，而不是永远卡在队列里。
+        if self._deferred_alert_line is None:
+            return
+        if now < self._next_deferred_flush_at:
+            return
+        self._next_deferred_flush_at = now + 2.0
+        self._flush_deferred_alert()
 
     def _show_permission_request(self, payload):
         request, future = payload
@@ -9179,19 +9276,23 @@ class MaidWidget(QWidget):
 
     # ---------- state machine ----------
     def show_alert(self, line: str, force: bool = False, *, style: str = "plain"):
+        # 非强制提醒被免打扰/忙碌/撞车拦下时一律进延后队列（§16「静默或排队」），
+        # 等空闲由 _maybe_flush_deferred_alert 补发；队列只留最后一条。
         if not force and self._effective_do_not_disturb():
             if self._do_not_disturb:
                 reason = "manual"
             else:
                 reason = self._auto_do_not_disturb_reason or "auto"
-            print(f"[alert] suppressed (do not disturb={reason}): {line!r}")
+            self._set_deferred_alert(line, style=style)
+            print(f"[alert] deferred (do not disturb={reason}): {line!r}")
             return
         if not force and self._is_busy_for_deferred_alerts():
             self._set_deferred_alert(line, style=style)
             print(f"[alert] deferred (busy, style={style}): {line!r}")
             return
         if self._state == MaidState.ALERT and not force:
-            print(f"[alert] suppressed (already alerting): {line!r}")
+            self._set_deferred_alert(line, style=style)
+            print(f"[alert] deferred (already alerting): {line!r}")
             return
         self._enter_until = None
         self._state = MaidState.ALERT
@@ -9227,6 +9328,7 @@ class MaidWidget(QWidget):
         dt = now - self._t0
 
         self._update_mood(now)
+        self._maybe_flush_deferred_alert(now)
 
         if (
             self._outing_active
