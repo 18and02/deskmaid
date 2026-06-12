@@ -1,7 +1,5 @@
-# DeskMaid 开发工具链:美术处理脚本(process_*.py / gen_placeholder.py)与
-# .app 打包(build_macos_app.py)才需要;日常运行与回归测试不依赖。
+# DeskMaid 开发工具链:占位立绘生成(gen_placeholder.py)与 .app 打包
+# (build_macos_app.py)才需要;日常运行与回归测试不依赖。
 -r requirements.txt
 Pillow
-rembg
-onnxruntime
 pyinstaller
