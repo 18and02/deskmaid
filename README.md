@@ -21,7 +21,15 @@
 - Python 3.11+
 - 一个 Anthropic API key
 
-## 安装与运行
+## 直接下载(推荐,无需 Python 环境)
+
+1. 从 [Releases](https://github.com/18and02/deskmaid/releases) 下载最新的 `DeskMaid.zip`,解压后把 `Deskmaid.app` 拖进「应用程序」文件夹
+2. **首次打开会被 macOS 拦下**(应用未经 Apple 公证):双击后到「系统设置 → 隐私与安全性」,在页面底部点「仍要打开」,之后就不会再拦
+3. 首次运行引导里填入你的 Anthropic API key 即可使用
+
+> 仅支持 Apple Silicon(M 系列芯片)。Intel Mac 请走下面的源码方式运行。
+
+## 从源码运行
 
 ```bash
 git clone https://github.com/18and02/deskmaid.git deskmaid
