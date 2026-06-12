@@ -35,6 +35,7 @@ from maid_tools import _create_mail_draft_sync, _run_jxa_json
 from test_integration_helpers import (
     assert_permission_trace_and_optional_tool_results,
     build_auto_allow_and_trace_handlers,
+    final_reply_matches,
     print_chat_result,
 )
 
@@ -337,7 +338,7 @@ def main():
             file=sys.stderr,
         )
         sys.exit(1)
-    if result.text.strip() != "sent":
+    if not final_reply_matches(result.text, "sent"):
         print(
             f"[error] expected final reply 'sent', got {result.text!r}",
             file=sys.stderr,

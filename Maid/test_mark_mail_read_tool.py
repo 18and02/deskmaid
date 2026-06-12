@@ -30,6 +30,7 @@ from maid_tools import _run_jxa_json
 from test_integration_helpers import (
     assert_permission_trace_and_optional_tool_results,
     build_auto_allow_and_trace_handlers,
+    final_reply_matches,
     print_chat_result,
 )
 
@@ -352,7 +353,7 @@ def main():
         )
         sys.exit(1)
 
-    if result.text.strip() != "marked":
+    if not final_reply_matches(result.text, "marked"):
         print(
             f"[error] expected final reply 'marked', got {result.text!r}",
             file=sys.stderr,

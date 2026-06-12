@@ -31,6 +31,13 @@ def _fail(message: str):
     sys.exit(1)
 
 
+def final_reply_matches(text: str, expected: str) -> bool:
+    """模型偶尔会在约定的收尾 token 前补一句叙述（例如先解释要通过 ToolSearch
+    加载工具 schema）；只要最后一个非空行恰为约定 token，链路即视为按约定收尾。"""
+    lines = [line.strip() for line in str(text or "").splitlines() if line.strip()]
+    return bool(lines) and lines[-1] == str(expected or "").strip()
+
+
 def _normalized_markers(markers: list[str] | tuple[str, ...] | None) -> list[str]:
     return [str(marker) for marker in (markers or []) if str(marker)]
 

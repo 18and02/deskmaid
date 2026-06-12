@@ -36,6 +36,7 @@ from maid_chat import (
     shutdown_maid_session,
 )
 from maid_tools import _run_jxa_json
+from test_integration_helpers import final_reply_matches
 
 
 CREATE_REMINDER_TOOL_NAMES = {
@@ -359,7 +360,7 @@ def _assert_step(
     remembered_after: list[str],
     events: list[ChatTraceEvent],
 ):
-    if result.text.strip() != expected_reply:
+    if not final_reply_matches(result.text, expected_reply):
         raise RuntimeError(
             f"{label}: expected final reply {expected_reply!r}, got {result.text!r}"
         )

@@ -29,6 +29,7 @@ from maid_tools import _run_jxa_json
 from test_integration_helpers import (
     assert_permission_trace_and_optional_tool_results,
     build_auto_allow_and_trace_handlers,
+    final_reply_matches,
     print_chat_result,
 )
 
@@ -147,7 +148,7 @@ def main():
         tool_result_description="the sample mail account, mailbox, ids, subject, or sender",
     )
 
-    if result.text.strip() != "read":
+    if not final_reply_matches(result.text, "read"):
         print(
             f"[error] expected final reply 'read', got {result.text!r}",
             file=sys.stderr,

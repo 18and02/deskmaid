@@ -32,6 +32,7 @@ from maid_tools import _list_reminders_sync, _run_jxa_json
 from test_integration_helpers import (
     assert_permission_trace_and_optional_tool_results,
     build_auto_allow_and_trace_handlers,
+    final_reply_matches,
     print_chat_result,
 )
 
@@ -197,7 +198,7 @@ def main():
         tool_result_description="the sample reminder or list",
     )
 
-    if result.text.strip() != "listed":
+    if not final_reply_matches(result.text, "listed"):
         print(
             f"[error] expected final reply 'listed', got {result.text!r}",
             file=sys.stderr,

@@ -27,6 +27,7 @@ from test_integration_helpers import (
     assert_permission_request_details,
     assert_permission_trace_and_optional_tool_results,
     build_auto_allow_and_trace_handlers,
+    final_reply_matches,
     preserve_resumable_session,
     print_chat_result,
 )
@@ -113,7 +114,7 @@ def main():
         tool_result_description=CALCULATOR_BUNDLE_ID,
     )
 
-    if result.text.strip() != "opened":
+    if not final_reply_matches(result.text, "opened"):
         print(
             f"[error] expected final reply 'opened', got {result.text!r}",
             file=sys.stderr,
