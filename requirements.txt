@@ -1,3 +1,4 @@
+# DeskMaid 运行时依赖(从源码运行只需要这一份)
 PySide6
 pyobjc-core
 pyobjc-framework-Cocoa
@@ -5,11 +6,5 @@ pyobjc-framework-Intents
 pyobjc-framework-Quartz
 pyobjc-framework-AVFoundation
 cryptography
-Pillow
-rembg
-onnxruntime
 claude-agent-sdk
-anthropic
-qasync
 python-dotenv
-pyinstaller

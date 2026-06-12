@@ -20,6 +20,12 @@ __pycache__/
 build/
 dist/
 
+# 个人文件 —— 不进公开仓库(原画与项目申报书,保留在本地磁盘)
+Maid.png
+LittleDJ.jpg
+DeskMaid-应用创新项目书.docx
+DeskMaid-应用创新项目书.pages
+
 # 临时文件与外部参考资料
 tmp/
 .tmp_ui_preview/
