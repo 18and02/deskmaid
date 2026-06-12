@@ -24,7 +24,7 @@
 ## 安装与运行
 
 ```bash
-git clone <repo-url> deskmaid
+git clone https://github.com/18and02/deskmaid.git deskmaid
 cd deskmaid
 python3.11 -m venv .venv   # 必须 3.11+;macOS 自带的 python3 往往是 3.9,先用 python3 --version 确认
 .venv/bin/pip install -r requirements.txt
