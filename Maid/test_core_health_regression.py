@@ -49,6 +49,8 @@ REGRESSION_CASES: tuple[tuple[str, str], ...] = (
     ("maid_widget_outing_smoke", "test_maid_widget_outing_smoke.py"),
     ("agent_guardrails", "test_agent_guardrails.py"),
     ("auto_do_not_disturb", "test_auto_do_not_disturb.py"),
+    ("hunger_system", "test_hunger_system.py"),
+    ("idle_quips_lifecycle", "test_idle_quips_lifecycle.py"),
     ("permission_health", "test_permission_health.py"),
     ("permission_health_view", "test_permission_health_view.py"),
     ("permission_recovery_messages", "test_permission_recovery_messages.py"),

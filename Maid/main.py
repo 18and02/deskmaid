@@ -167,6 +167,9 @@ from lines import (
     HUNGER_HUNGRY_LINES,
     HUNGER_PECKISH_LINES,
     HUNGER_STARVING_LINES,
+    IDLE_QUIP_LINES,
+    LIFECYCLE_LAUNCH_LINES,
+    LIFECYCLE_QUIT_LINES,
     WATER_REMINDER_LINES,
 )
 from maid_hunger import (
@@ -177,6 +180,7 @@ from maid_hunger import (
     HungerAnnouncer,
     HungerState,
     evaluate_hunger,
+    pick_hunger_line,
 )
 
 # --- macOS native window tweaks via PyObjC ---
@@ -322,6 +326,13 @@ DEMO_SLEEPY_AFTER_S   = 5
 DEMO_PECKISH_AFTER_S  = 15
 DEMO_SLEEPY_REPEAT_S  = 15
 DEMO_PECKISH_REPEAT_S = 20
+
+# Idle quips (脚本台词 §三): low-frequency spoken asides, only while idle.
+# 频率刻意压低——仅在长时间无操作时触发，且两次之间至少间隔 ~20 分钟，否则从可爱变烦人。
+IDLE_QUIP_AFTER_S       = 5 * 60   # must stay idle this long before the first quip
+IDLE_QUIP_REPEAT_S      = 20 * 60  # minimum gap between consecutive quips
+DEMO_IDLE_QUIP_AFTER_S  = 4
+DEMO_IDLE_QUIP_REPEAT_S = 10
 
 
 class MaidState(Enum):
@@ -7616,6 +7627,12 @@ class MaidWidget(QWidget):
         self._peckish_repeat_s = DEMO_PECKISH_REPEAT_S if demo_short else PECKISH_REPEAT_S
         self._next_sleepy_at = self._t0 + self._sleepy_after_s
         self._next_peckish_at = self._t0 + self._peckish_after_s
+        # idle quips + lifecycle lines (脚本台词 §三 / §四): scripted, no API spend.
+        self._idle_quip_after_s  = DEMO_IDLE_QUIP_AFTER_S  if demo_short else IDLE_QUIP_AFTER_S
+        self._idle_quip_repeat_s = DEMO_IDLE_QUIP_REPEAT_S if demo_short else IDLE_QUIP_REPEAT_S
+        self._next_idle_quip_at = self._t0 + self._idle_quip_after_s
+        self._last_idle_quip_line = ""
+        self._last_lifecycle_line = ""
         # hunger (budget-driven): initial stage comes from the current snapshot,
         # so a restart never re-announces an old threshold crossing.
         try:
@@ -7880,6 +7897,8 @@ class MaidWidget(QWidget):
         now = time.monotonic()
         self._last_activity_at = now
         self._next_sleepy_at = now + self._sleepy_after_s
+        # an idle quip only fires after a fresh stretch of inactivity.
+        self._next_idle_quip_at = now + self._idle_quip_after_s
         if self._mood in {"sleepy", "peckish"}:
             print(f"[mood] {self._mood} -> default  (activity)")
             self._mood = "default"
@@ -7973,6 +7992,58 @@ class MaidWidget(QWidget):
             print(f"[mood] default -> {self._mood}  "
                   f"(uptime={uptime:.1f}s, quiet_for={quiet_for:.1f}s)")
 
+    def _idle_quip_allowed(self, now: float) -> bool:
+        """Idle quips are pure flavor — only emit them when the maid is plainly
+        idle and free to speak. If blocked we just skip (drop, never queue), so a
+        stale quip can't pop up later at a bad moment."""
+        if not IDLE_QUIP_LINES:
+            return False
+        if self._exiting or self._outing_active:
+            return False
+        if self._state != MaidState.IDLE:
+            return False
+        if self._enter_until is not None and now < self._enter_until:
+            return False
+        if (now - self._last_activity_at) < self._idle_quip_after_s:
+            return False
+        if self._effective_do_not_disturb() or self._is_busy_for_deferred_alerts():
+            return False
+        return True
+
+    def _maybe_idle_quip(self, now: float):
+        """Low-frequency standby aside (脚本台词 §三). Scripted, no API spend."""
+        if now < self._next_idle_quip_at:
+            return
+        if not self._idle_quip_allowed(now):
+            # conditions not met yet — retry on a later tick without resetting the
+            # long repeat gap, so the next eligible moment still fires promptly.
+            return
+        line = pick_hunger_line(IDLE_QUIP_LINES, last_line=self._last_idle_quip_line)
+        if not line:
+            return
+        self._last_idle_quip_line = line
+        self._next_idle_quip_at = now + self._idle_quip_repeat_s
+        print(f"[idle-quip] {line!r}")
+        self.show_alert(line)
+
+    def speak_launch_line(self):
+        """Greeting on startup (脚本台词 §四). Optional flavor: skip silently if
+        onboarding is up, the maid is busy/quitting, or do-not-disturb is on."""
+        if not LIFECYCLE_LAUNCH_LINES or self._exiting:
+            return
+        if self._onboarding_dialog.isVisible():
+            return
+        if self._effective_do_not_disturb() or self._is_busy_for_deferred_alerts():
+            return
+        if self._state != MaidState.IDLE:
+            return
+        line = pick_hunger_line(LIFECYCLE_LAUNCH_LINES, last_line=self._last_lifecycle_line)
+        if not line:
+            return
+        self._last_lifecycle_line = line
+        print(f"[lifecycle] launch {line!r}")
+        self.show_alert(line)
+
     def _blink_allowed(self, now: float) -> bool:
         """Blink is only allowed while the visual state is the plain idle pose."""
         if "blink" not in self._sprites:
@@ -8006,7 +8077,24 @@ class MaidWidget(QWidget):
         self._auto_dnd_timer.stop()
         self._budget_notice_timer.stop()
         self._auto_dnd_native_observer.stop()
-        self._bubble.hide()
+        # farewell line (脚本台词 §四): linger it in the bubble through the exit
+        # animation. Skip during do-not-disturb / sensitive scenes, or when there's
+        # no exit sprite to dwell on (we'd quit before it could be read).
+        farewell = ""
+        if (
+            LIFECYCLE_QUIT_LINES
+            and "exit" in self._sprites
+            and not self._effective_do_not_disturb()
+        ):
+            farewell = pick_hunger_line(
+                LIFECYCLE_QUIT_LINES, last_line=self._last_lifecycle_line
+            )
+        if farewell:
+            self._last_lifecycle_line = farewell
+            print(f"[lifecycle] quit {farewell!r}")
+            self._bubble.show_at(farewell, self, style="plain")
+        else:
+            self._bubble.hide()
         self._chat_dialog.hide()
         self._permission_dialog.hide()
         self._question_dialog.hide()
@@ -8830,6 +8918,8 @@ class MaidWidget(QWidget):
     def _maybe_flush_deferred_alert(self, now: float):
         # 兜底补发：忙碌/免打扰解除后即使再没有别的气泡，排队的提醒也能在
         # 几秒内自己浮出来，而不是永远卡在队列里。
+        if self._exiting:
+            return
         if self._deferred_alert_line is None:
             return
         if now < self._next_deferred_flush_at:
@@ -9329,6 +9419,7 @@ class MaidWidget(QWidget):
 
         self._update_mood(now)
         self._maybe_flush_deferred_alert(now)
+        self._maybe_idle_quip(now)
 
         if (
             self._outing_active
@@ -9372,7 +9463,7 @@ class MaidWidget(QWidget):
         self._y_offset = new_y
         self._eye_closed = new_closed
 
-        if self._state == MaidState.ALERT:
+        if self._state == MaidState.ALERT and not self._exiting:
             if now - self._state_entered_at >= ALERT_DURATION_S:
                 self.end_alert()
                 visuals_changed = True
@@ -9822,6 +9913,8 @@ def main():
     w.show()
     w.configure_native()
     QTimer.singleShot(0, w.maybe_show_onboarding)
+    # greet once the opening animation has settled (脚本台词 §四).
+    QTimer.singleShot(int(ENTER_DURATION_S * 1000) + 250, w.speak_launch_line)
 
     scheduler = ReminderScheduler()
     scheduler.fired.connect(w.show_alert)
