@@ -38,7 +38,13 @@ from PIL import ImageOps
 
 ROOT = Path(__file__).resolve().parent
 VENV_PYTHON = ROOT / ".venv" / "bin" / "python"
-PYTHON = str(VENV_PYTHON) if VENV_PYTHON.is_file() else sys.executable
+# 默认用仓库 .venv(本机架构)打包;设 DESKMAID_BUILD_PYTHON 指向另一套
+# venv 的 python 即可换架构构建(如 Rosetta 下的 x86_64 venv 出 Intel 包)。
+# PyInstaller 跟随该解释器的架构产出对应 slice。
+PYTHON = (
+    str(os.environ.get("DESKMAID_BUILD_PYTHON") or "").strip()
+    or (str(VENV_PYTHON) if VENV_PYTHON.is_file() else sys.executable)
+)
 APP_NAME = "Deskmaid"
 BUNDLE_ID = "com.regulus.deskmaid"
 APP_PATH = ROOT / "dist" / f"{APP_NAME}.app"
@@ -59,6 +65,62 @@ USER_GUIDE_RELEASE_NAME = "DeskMaid-README.md"
 APPLE_EVENTS_USAGE = (
     "Deskmaid 需要在你确认后控制 Calendar、Reminders、Mail 和 System Events "
     "来完成桌面任务。"
+)
+
+# 前端只用 PySide6.QtCore / QtGui / QtWidgets(见 Maid/*.py 的 import)。
+# PyInstaller 的 PySide6 hook 默认会把整套 Qt 库都打进来——其中 QtWebEngineCore
+# 单独就有 ~285MB。这里显式排除所有用不到的子模块,把 .app 砍掉一个量级。
+# 新增前端依赖某个 Qt 模块时,记得从这份清单里删掉它。
+_PYSIDE6_EXCLUDED_MODULES = (
+    "PySide6.QtWebEngineCore",
+    "PySide6.QtWebEngineWidgets",
+    "PySide6.QtWebEngineQuick",
+    "PySide6.QtWebChannel",
+    "PySide6.QtWebSockets",
+    "PySide6.QtQml",
+    "PySide6.QtQuick",
+    "PySide6.QtQuick3D",
+    "PySide6.QtQuickWidgets",
+    "PySide6.QtQuickControls2",
+    "PySide6.QtPdf",
+    "PySide6.QtPdfWidgets",
+    "PySide6.QtMultimedia",
+    "PySide6.QtMultimediaWidgets",
+    "PySide6.QtSpatialAudio",
+    "PySide6.Qt3DCore",
+    "PySide6.Qt3DRender",
+    "PySide6.Qt3DInput",
+    "PySide6.Qt3DLogic",
+    "PySide6.Qt3DAnimation",
+    "PySide6.Qt3DExtras",
+    "PySide6.QtDesigner",
+    "PySide6.QtUiTools",
+    "PySide6.QtCharts",
+    "PySide6.QtDataVisualization",
+    "PySide6.QtGraphs",
+    "PySide6.QtGraphsWidgets",
+    "PySide6.QtNetworkAuth",
+    "PySide6.QtBluetooth",
+    "PySide6.QtNfc",
+    "PySide6.QtPositioning",
+    "PySide6.QtLocation",
+    "PySide6.QtSensors",
+    "PySide6.QtSerialPort",
+    "PySide6.QtSerialBus",
+    "PySide6.QtSql",
+    "PySide6.QtTest",
+    "PySide6.QtHelp",
+    "PySide6.QtSvgWidgets",
+    "PySide6.QtPrintSupport",
+    "PySide6.QtOpenGL",
+    "PySide6.QtOpenGLWidgets",
+    "PySide6.QtShaderTools",
+    "PySide6.QtScxml",
+    "PySide6.QtStateMachine",
+    "PySide6.QtRemoteObjects",
+    "PySide6.QtTextToSpeech",
+    "PySide6.QtHttpServer",
+    "PySide6.QtConcurrent",
 )
 
 CODESIGN_IDENTITY_ENV_VAR = "DESKMAID_CODESIGN_IDENTITY"
@@ -390,12 +452,12 @@ def _pyinstaller_command() -> list[str]:
         "Quartz",
         "--collect-submodules",
         "claude_agent_sdk",
-        "--collect-data",
-        "PySide6",
         "--add-data",
         f"{asset_dir}:Maid/assets",
-        str(ROOT / "Maid" / "main.py"),
     ]
+    for module in _PYSIDE6_EXCLUDED_MODULES:
+        cmd.extend(["--exclude-module", module])
+    cmd.append(str(ROOT / "Maid" / "main.py"))
     if icon_path is not None:
         cmd.extend(
             [
