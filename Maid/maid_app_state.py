@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 import json
 import os
 from pathlib import Path
@@ -103,6 +103,10 @@ class AppStateSnapshot:
     custom_reminder_enabled: bool = DEFAULT_CUSTOM_REMINDER_ENABLED
     custom_reminder_minutes: int = DEFAULT_CUSTOM_REMINDER_MINUTES
     custom_reminder_text: str = DEFAULT_CUSTOM_REMINDER_TEXT
+    llm_provider_id: str = "anthropic"
+    llm_model: str = ""
+    llm_custom_base_url: str = ""
+    llm_custom_model: str = ""
     updated_at: float = 0.0
 
 
@@ -216,6 +220,11 @@ def _load_snapshot(path: Path) -> AppStateSnapshot:
             payload.get("custom_reminder_text"),
             DEFAULT_CUSTOM_REMINDER_TEXT,
         ),
+        llm_provider_id=str(payload.get("llm_provider_id") or "anthropic").strip().lower()[:40]
+        or "anthropic",
+        llm_model=str(payload.get("llm_model") or "").strip()[:120],
+        llm_custom_base_url=str(payload.get("llm_custom_base_url") or "").strip()[:300],
+        llm_custom_model=str(payload.get("llm_custom_model") or "").strip()[:120],
         updated_at=float(payload.get("updated_at") or 0.0),
     )
 
@@ -262,6 +271,10 @@ class AppStateStore:
                 custom_reminder_enabled=self._snapshot.custom_reminder_enabled,
                 custom_reminder_minutes=self._snapshot.custom_reminder_minutes,
                 custom_reminder_text=self._snapshot.custom_reminder_text,
+                llm_provider_id=self._snapshot.llm_provider_id,
+                llm_model=self._snapshot.llm_model,
+                llm_custom_base_url=self._snapshot.llm_custom_base_url,
+                llm_custom_model=self._snapshot.llm_custom_model,
                 updated_at=time.time(),
             )
             self._save_locked()
@@ -310,6 +323,10 @@ class AppStateStore:
                 custom_reminder_enabled=self._snapshot.custom_reminder_enabled,
                 custom_reminder_minutes=self._snapshot.custom_reminder_minutes,
                 custom_reminder_text=self._snapshot.custom_reminder_text,
+                llm_provider_id=self._snapshot.llm_provider_id,
+                llm_model=self._snapshot.llm_model,
+                llm_custom_base_url=self._snapshot.llm_custom_base_url,
+                llm_custom_model=self._snapshot.llm_custom_model,
                 updated_at=time.time(),
             )
             self._save_locked()
@@ -343,6 +360,10 @@ class AppStateStore:
                 custom_reminder_enabled=self._snapshot.custom_reminder_enabled,
                 custom_reminder_minutes=self._snapshot.custom_reminder_minutes,
                 custom_reminder_text=self._snapshot.custom_reminder_text,
+                llm_provider_id=self._snapshot.llm_provider_id,
+                llm_model=self._snapshot.llm_model,
+                llm_custom_base_url=self._snapshot.llm_custom_base_url,
+                llm_custom_model=self._snapshot.llm_custom_model,
                 updated_at=time.time(),
             )
             self._save_locked()
@@ -377,6 +398,10 @@ class AppStateStore:
                 custom_reminder_enabled=self._snapshot.custom_reminder_enabled,
                 custom_reminder_minutes=self._snapshot.custom_reminder_minutes,
                 custom_reminder_text=self._snapshot.custom_reminder_text,
+                llm_provider_id=self._snapshot.llm_provider_id,
+                llm_model=self._snapshot.llm_model,
+                llm_custom_base_url=self._snapshot.llm_custom_base_url,
+                llm_custom_model=self._snapshot.llm_custom_model,
                 updated_at=time.time(),
             )
             self._save_locked()
@@ -432,6 +457,10 @@ class AppStateStore:
                 custom_reminder_enabled=self._snapshot.custom_reminder_enabled,
                 custom_reminder_minutes=self._snapshot.custom_reminder_minutes,
                 custom_reminder_text=self._snapshot.custom_reminder_text,
+                llm_provider_id=self._snapshot.llm_provider_id,
+                llm_model=self._snapshot.llm_model,
+                llm_custom_base_url=self._snapshot.llm_custom_base_url,
+                llm_custom_model=self._snapshot.llm_custom_model,
                 updated_at=time.time(),
             )
             self._save_locked()
@@ -465,6 +494,10 @@ class AppStateStore:
                 custom_reminder_enabled=self._snapshot.custom_reminder_enabled,
                 custom_reminder_minutes=self._snapshot.custom_reminder_minutes,
                 custom_reminder_text=self._snapshot.custom_reminder_text,
+                llm_provider_id=self._snapshot.llm_provider_id,
+                llm_model=self._snapshot.llm_model,
+                llm_custom_base_url=self._snapshot.llm_custom_base_url,
+                llm_custom_model=self._snapshot.llm_custom_model,
                 updated_at=time.time(),
             )
             self._save_locked()
@@ -498,6 +531,10 @@ class AppStateStore:
                 custom_reminder_enabled=self._snapshot.custom_reminder_enabled,
                 custom_reminder_minutes=self._snapshot.custom_reminder_minutes,
                 custom_reminder_text=self._snapshot.custom_reminder_text,
+                llm_provider_id=self._snapshot.llm_provider_id,
+                llm_model=self._snapshot.llm_model,
+                llm_custom_base_url=self._snapshot.llm_custom_base_url,
+                llm_custom_model=self._snapshot.llm_custom_model,
                 updated_at=time.time(),
             )
             self._save_locked()
@@ -554,8 +591,37 @@ class AppStateStore:
                     custom_reminder_text,
                     DEFAULT_CUSTOM_REMINDER_TEXT,
                 ),
+                llm_provider_id=self._snapshot.llm_provider_id,
+                llm_model=self._snapshot.llm_model,
+                llm_custom_base_url=self._snapshot.llm_custom_base_url,
+                llm_custom_model=self._snapshot.llm_custom_model,
                 updated_at=time.time(),
             )
+            self._save_locked()
+            return self._snapshot
+
+    def set_llm_preferences(
+        self,
+        *,
+        provider_id: str | None = None,
+        model: str | None = None,
+        custom_base_url: str | None = None,
+        custom_model: str | None = None,
+    ) -> AppStateSnapshot:
+        """Update LLM provider / model selection. Only the passed fields change."""
+        with self._lock:
+            changes: dict[str, object] = {}
+            if provider_id is not None:
+                changes["llm_provider_id"] = (
+                    str(provider_id or "anthropic").strip().lower() or "anthropic"
+                )
+            if model is not None:
+                changes["llm_model"] = str(model or "").strip()[:120]
+            if custom_base_url is not None:
+                changes["llm_custom_base_url"] = str(custom_base_url or "").strip()[:300]
+            if custom_model is not None:
+                changes["llm_custom_model"] = str(custom_model or "").strip()[:120]
+            self._snapshot = replace(self._snapshot, **changes, updated_at=time.time())
             self._save_locked()
             return self._snapshot
 

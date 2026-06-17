@@ -31,6 +31,7 @@ PYTHON = sys.executable
 REGRESSION_CASES: tuple[tuple[str, str], ...] = (
     ("api_key_store", "test_api_key_store.py"),
     ("app_state_store", "test_app_state_store.py"),
+    ("llm_providers", "test_llm_providers.py"),
     ("budget_guard_store", "test_budget_guard_store.py"),
     ("budget_guard_integration", "test_budget_guard_integration.py"),
     ("budget_status_view", "test_budget_status_view.py"),

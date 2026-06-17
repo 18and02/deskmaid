@@ -34,8 +34,13 @@ from claude_agent_sdk import (
 )
 from dotenv import load_dotenv
 
-from maid_api_key import ensure_runtime_api_key
+from maid_api_key import ensure_runtime_api_key, load_provider_key
 from maid_app_state import load_app_state_snapshot
+from maid_providers import (
+    build_subprocess_env,
+    get_provider,
+    resolve_active_provider,
+)
 from maid_budget import (
     BudgetGuardStatus,
     BudgetUsageStore,
@@ -280,6 +285,34 @@ def _current_budget_mode() -> str:
 def _current_max_budget_usd() -> float | None:
     mode = _current_budget_mode()
     return BUDGET_MODE_MAX_BUDGET_USD.get(mode)
+
+
+def _provider_key_env_var(provider_id: str) -> str:
+    provider = get_provider(provider_id)
+    return provider.key_env_var if provider is not None else ""
+
+
+def _resolve_provider_runtime() -> tuple[dict[str, str], str, object]:
+    """Resolve the active provider into (subprocess_env, model, resolved).
+
+    Anthropic returns an empty env — the key keeps flowing through the inherited
+    ``ANTHROPIC_API_KEY`` exactly as before. Third-party providers get an env
+    override pointing the CLI at their Anthropic-compatible endpoint + key.
+    """
+    resolved = resolve_active_provider(load_app_state_snapshot())
+    if resolved.is_anthropic:
+        return {}, resolved.model, resolved
+    key = load_provider_key(resolved.id, env_var=_provider_key_env_var(resolved.id)) or ""
+    return build_subprocess_env(resolved, key), resolved.model, resolved
+
+
+def _active_provider_key_ready() -> tuple[bool, object]:
+    """Whether the active provider has a usable key, plus the resolved provider."""
+    resolved = resolve_active_provider(load_app_state_snapshot())
+    if resolved.is_anthropic:
+        return bool(ensure_runtime_api_key()), resolved
+    key = load_provider_key(resolved.id, env_var=_provider_key_env_var(resolved.id))
+    return bool(key), resolved
 
 
 def _normalize_startup_error_message(message: str) -> str:
@@ -1323,8 +1356,13 @@ class _AgentSession:
             self._session_allowed_tools.clear()
 
     def _ensure_started(self):
-        if not ensure_runtime_api_key():
-            raise ChatConfigError("还没有配置 Claude API key。先在第一次见面里填上。")
+        key_ready, resolved = _active_provider_key_ready()
+        if not key_ready:
+            if resolved.is_anthropic:
+                raise ChatConfigError("还没有配置 Claude API key。先在第一次见面里填上。")
+            raise ChatConfigError(
+                f"还没有配置「{resolved.name}」的 API key。先在右键菜单 → 模型/服务商里填上。"
+            )
         with self._lock:
             if self._thread is not None and self._thread.is_alive():
                 return
@@ -1399,9 +1437,13 @@ class _AgentSession:
         if memory_prompt:
             system_prompt = f"{system_prompt}\n\n{memory_prompt}"
         cli_path = find_claude_cli_path()
+        # Active provider decides the model + (for third-party) the endpoint/key
+        # env. Anthropic returns env={} so this path stays identical to before.
+        provider_env, provider_model, _resolved = _resolve_provider_runtime()
         return ClaudeAgentOptions(
             system_prompt=system_prompt,
-            model=MODEL,
+            model=provider_model or MODEL,
+            env=provider_env,
             cwd=str(APP_ROOT),
             mcp_servers=MAID_MCP_SERVERS,
             permission_mode="default",
@@ -2353,6 +2395,17 @@ def ask_maid(
 
 def shutdown_maid_session():
     _SESSION.close()
+
+
+def reset_maid_session():
+    """Stop the running session and forget the resume id.
+
+    Used when the active provider / model changes so the next message starts a
+    fresh session instead of resuming a transcript built on another backend.
+    """
+    _SESSION.close()
+    with _SESSION._lock:
+        _SESSION._last_session_id = None
 
 
 def set_permission_handler(handler: PermissionHandler | None):
