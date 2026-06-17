@@ -34,13 +34,13 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer, QPoint, QObject, Signal, QThread, QUrl
 from PySide6.QtGui import (
-    QImage, QPixmap, QPainter, QColor, QPen, QCursor, QAction, QTextCursor,
-    QDesktopServices,
+    QImage, QPixmap, QPainter, QColor, QPen, QCursor, QAction, QActionGroup,
+    QTextCursor, QDesktopServices,
 )
 from PySide6.QtWidgets import (
     QApplication, QWidget, QMenu, QCheckBox, QComboBox, QDialog, QFrame, QHBoxLayout,
-    QFileDialog, QGridLayout, QLabel, QLineEdit, QPlainTextEdit, QPushButton,
-    QRadioButton, QScrollArea, QSpinBox, QVBoxLayout,
+    QFileDialog, QGridLayout, QInputDialog, QLabel, QLineEdit, QMessageBox,
+    QPlainTextEdit, QPushButton, QRadioButton, QScrollArea, QSpinBox, QVBoxLayout,
 )
 
 from maid_api_key import (
@@ -48,7 +48,15 @@ from maid_api_key import (
     DEFAULT_API_KEY_PATH,
     ApiKeyStatus,
     api_key_status,
+    provider_key_status,
     save_api_key,
+    save_provider_key,
+)
+from maid_providers import (
+    BUILTIN_PROVIDERS,
+    CUSTOM_PROVIDER_ID,
+    get_provider,
+    resolve_active_provider,
 )
 from maid_auto_dnd import AutoDoNotDisturbState, probe_auto_do_not_disturb
 from maid_app_state import (
@@ -156,6 +164,7 @@ from maid_chat import (
     PermissionRequest,
     ask_maid,
     record_budget_activity,
+    reset_maid_session,
     set_ask_user_question_handler,
     set_permission_handler,
     shutdown_maid_session,
@@ -9553,6 +9562,149 @@ class MaidWidget(QWidget):
             self.update()
             ev.accept()
 
+    def _provider_entries(self) -> list[tuple[str, str]]:
+        entries = [(p.id, p.name) for p in BUILTIN_PROVIDERS]
+        entries.append((CUSTOM_PROVIDER_ID, "自定义"))
+        return entries
+
+    def _add_provider_menu(self, parent_menu: QMenu, english: bool):
+        snapshot = self._app_state.snapshot()
+        resolved = resolve_active_provider(snapshot)
+        active_id = resolved.id
+        sub = parent_menu.addMenu("Model / Provider" if english else "模型 / 服务商")
+        group = QActionGroup(sub)
+        group.setExclusive(True)
+        for pid, name in self._provider_entries():
+            act = QAction(name, sub)
+            act.setCheckable(True)
+            act.setChecked(pid == active_id)
+            act.triggered.connect(lambda _checked=False, p=pid: self._switch_provider(p))
+            group.addAction(act)
+            sub.addAction(act)
+        sub.addSeparator()
+        act_model = QAction(
+            (f"Model: {resolved.model}" if english else f"当前模型: {resolved.model}"), sub
+        )
+        act_model.triggered.connect(lambda _checked=False: self._edit_provider_model())
+        sub.addAction(act_model)
+        provider = get_provider(active_id)
+        env_var = provider.key_env_var if provider is not None else ""
+        configured = provider_key_status(active_id, env_var=env_var).configured
+        if english:
+            key_label = f"API key: {'set' if configured else 'not set'}…"
+        else:
+            key_label = f"API key: {'已配置' if configured else '未配置'}…"
+        act_key = QAction(key_label, sub)
+        act_key.triggered.connect(lambda _checked=False: self._edit_provider_key())
+        sub.addAction(act_key)
+        if active_id == CUSTOM_PROVIDER_ID:
+            act_ep = QAction("Custom endpoint…" if english else "自定义端点…", sub)
+            act_ep.triggered.connect(lambda _checked=False: self._edit_custom_endpoint())
+            sub.addAction(act_ep)
+
+    def _provider_switch_blocked(self) -> bool:
+        """A running chat owns the SDK session; don't yank it mid-reply."""
+        if self._chat_thread is not None and self._chat_thread.isRunning():
+            QMessageBox.information(
+                self,
+                "对话进行中",
+                "她正在回话。等这轮说完，或先在菜单里「清除会话」，再切换服务商 / 模型。",
+            )
+            return True
+        return False
+
+    def _switch_provider(self, provider_id: str):
+        self._record_activity()
+        snapshot = self._app_state.snapshot()
+        if resolve_active_provider(snapshot).id == provider_id:
+            # re-selecting the active provider: just offer to set its key
+            self._edit_provider_key(provider_id)
+            return
+        if self._provider_switch_blocked():
+            return
+        # switching resets the per-provider model override to the new default
+        self._app_state.set_llm_preferences(provider_id=provider_id, model="")
+        reset_maid_session()
+        provider = get_provider(provider_id)
+        print(f"[provider] switched to {provider_id}")
+        if provider_id == CUSTOM_PROVIDER_ID and not self._app_state.snapshot().llm_custom_base_url:
+            self._edit_custom_endpoint()
+        env_var = provider.key_env_var if provider is not None else ""
+        if not provider_key_status(provider_id, env_var=env_var).configured:
+            self._edit_provider_key(provider_id)
+
+    def _edit_provider_model(self):
+        self._record_activity()
+        if self._provider_switch_blocked():
+            return
+        snapshot = self._app_state.snapshot()
+        resolved = resolve_active_provider(snapshot)
+        provider = get_provider(resolved.id)
+        suggestions = list(provider.models) if provider is not None else []
+        if suggestions:
+            current = resolved.model
+            start = suggestions.index(current) if current in suggestions else 0
+            text, ok = QInputDialog.getItem(
+                self, "选择模型", "模型 ID(可直接编辑):", suggestions, start, True
+            )
+        else:
+            text, ok = QInputDialog.getText(
+                self, "设置模型", "模型 ID:", QLineEdit.Normal, resolved.model
+            )
+        if ok and str(text).strip():
+            self._app_state.set_llm_preferences(model=str(text).strip())
+            reset_maid_session()
+            print(f"[provider] model -> {str(text).strip()}")
+
+    def _edit_provider_key(self, provider_id: str | None = None):
+        self._record_activity()
+        snapshot = self._app_state.snapshot()
+        pid = provider_id or resolve_active_provider(snapshot).id
+        provider = get_provider(pid)
+        name = provider.name if provider is not None else "自定义"
+        hint = (
+            f"(从 {provider.key_hint} 获取)" if provider is not None and provider.key_hint else ""
+        )
+        text, ok = QInputDialog.getText(
+            self, f"{name} API key", f"粘贴 {name} 的 API key{hint}:", QLineEdit.Password
+        )
+        if not ok or not str(text).strip():
+            return
+        env_var = provider.key_env_var if provider is not None else ""
+        try:
+            save_provider_key(pid, str(text).strip(), env_var=env_var)
+        except Exception as exc:
+            QMessageBox.warning(self, "保存失败", str(exc))
+            return
+        QMessageBox.information(self, "已保存", f"{name} 的 API key 已保存。")
+
+    def _edit_custom_endpoint(self):
+        self._record_activity()
+        if self._provider_switch_blocked():
+            return
+        snapshot = self._app_state.snapshot()
+        url, ok = QInputDialog.getText(
+            self,
+            "自定义端点",
+            "Anthropic 兼容 base_url(如 https://api.example.com/anthropic):",
+            QLineEdit.Normal,
+            snapshot.llm_custom_base_url,
+        )
+        if not ok:
+            return
+        model, ok2 = QInputDialog.getText(
+            self, "自定义模型", "模型 ID:", QLineEdit.Normal, snapshot.llm_custom_model
+        )
+        if not ok2:
+            return
+        self._app_state.set_llm_preferences(
+            provider_id=CUSTOM_PROVIDER_ID,
+            custom_base_url=str(url).strip(),
+            custom_model=str(model).strip(),
+        )
+        reset_maid_session()
+        print("[provider] custom endpoint updated")
+
     def contextMenuEvent(self, ev):
         self._record_activity()
         m = QMenu(self)
@@ -9582,6 +9734,7 @@ class MaidWidget(QWidget):
         act_pack_meta = QAction(pack_meta_label, self)
         act_pack_meta.triggered.connect(self._show_sprite_pack_info_dialog)
         m.addAction(act_pack_meta)
+        self._add_provider_menu(m, english)
         if not self._auto_do_not_disturb_enabled:
             auto_dnd_label = (
                 "Auto DND: Detection Off"
