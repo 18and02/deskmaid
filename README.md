@@ -1,5 +1,7 @@
 # DeskMaid 桌面女仆
 
+[中文](README.md) | [English](README.en.md)
+
 一只常驻 macOS 桌面的透明立绘女仆:**女仆是壳(脸 + 表情 + 权限 UI,本地、你掌控),Claude 是脑和手(Agent SDK,云端),记忆是单独挂上去的一层(本地加密)。**
 
 > DeskMaid is a transparent desktop maid companion for macOS. The sprite shell, permission UI, and encrypted memory live locally; Claude (via the Agent SDK) is the brain. Run it from source with a Python venv and your own Anthropic API key — no packaged app or notarization required.
