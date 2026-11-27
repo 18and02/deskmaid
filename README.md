@@ -99,6 +99,6 @@ cp .env.example .env       # 编辑 .env,填入你的 ANTHROPIC_API_KEY(或留�
 
 代码与内置立绘包(AI 生成)均以 [MIT 许可](LICENSE) 提供。
 
-## 合作者说明（待维护者审核）
+## 合作者说明
 
-拟标注 `qlmeng2023` 为第二合作者；此说明请由维护者核实，不表示其原创本项目技术成果。
+qlmeng2023 为合作者

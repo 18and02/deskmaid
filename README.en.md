@@ -101,4 +101,4 @@ The code and bundled sprite pack (AI-generated) are provided under the [MIT Lice
 
 ## Attribution
 
-Proposed project documentation attribution: `qlmeng2023` — second collaborator. This attribution is submitted for maintainer review and does not claim original technical authorship.
+qlmeng2023 — collaborator
